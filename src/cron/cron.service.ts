@@ -21,7 +21,7 @@ export class CronService {
   @Cron('10,30,50 * * * * *')
   async handleCron() {
     const rawData = await this.connection.query(
-      'select tracker.lat,tracker.lon,tracker.velocidad,tracker.direccion,tracker.time,unidades.placa FROM tracker,unidades where tracker.id_empresa=unidades.id_empresa AND tracker.id_tracker=unidades.gps_set AND tracker.id_empresa=16 AND tracker.u_time>(now() - interval 5 second)',
+      'select tracker.lat,tracker.lon,tracker.velocidad,tracker.direccion,tracker.time,unidades.placa FROM tracker,unidades where tracker.id_empresa=unidades.id_empresa AND tracker.id_tracker=unidades.gps_set AND ( tracker.id_empresa=16 OR tracker.id_empresa=4 ) AND tracker.u_time>(now() - interval 21 second)',
     );
     const rawDataInCache =
       ((await this.cacheManager.get('rawData')) as Array<any>) || [];
