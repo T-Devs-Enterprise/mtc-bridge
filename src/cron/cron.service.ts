@@ -17,23 +17,67 @@ export class CronService {
 
   private readonly logger = new Logger(CronService.name);
 
-  //@Cron('10,20,30,40,50,60 * * * * *')
+  //@Cron('10,30,50 * * * * *')
   @Cron(CronExpression.EVERY_5_SECONDS)
   async handleCron() {
     const rawData = await this.connection.query(
       'select tracker.lat,tracker.lon,tracker.velocidad,tracker.direccion,tracker.time,unidades.placa FROM tracker,unidades where tracker.id_empresa=unidades.id_empresa AND tracker.id_tracker=unidades.gps_set AND tracker.id_empresa=16 AND tracker.u_time>(now() - interval 5 second)',
     );
-    const parsedData = this.mapData(rawData);
-    this.logger.verbose(`dataLength => ${parsedData.length}`);
+    const rawDataInCache =
+      ((await this.cacheManager.get('rawData')) as Array<any>) || [];
+
+    const cleanedData = this.getDifferenceBetweenArrays(
+      rawData,
+      rawDataInCache,
+    );
+    const redundantData = this.getIntersectionBetweeenArrays(
+      rawData,
+      rawDataInCache,
+    );
+    this.logger.verbose(`rawDataInCache.length => ${rawDataInCache.length}`);
+    this.logger.verbose(`redundantData.length  => ${redundantData.length}`);
+    this.logger.verbose(`rawData.length        => ${rawData.length}`);
+    this.logger.verbose(`cleanedData.length    => ${cleanedData.length}`);
+    //this.logger.verbose(
+    //  `rawData               => ${JSON.stringify(rawData, null, 2)}`,
+    //);
+
+    const parsedData = this.mapData(cleanedData);
+    //this.logger.verbose(`data=> ${JSON.stringify(parsedData, null, 2)}`);
 
     if (parsedData.length > 0) {
       //this.logger.verbose(
       //  `example => ${JSON.stringify(parsedData.slice(0, 4), null, 2)}`,
       //);
-      this.sendDataToMtc(parsedData);
+      //this.sendDataToMtc(parsedData);
+      this.cacheManager.set('rawData', rawData, { ttl: 0 });
     }
+    this.logger.verbose(`------------------------------------------------`);
   }
 
+  getSymetricDifferenceBetweenArrays(arr1: Array<any>, arr2: Array<any>) {
+    const difference = arr1
+      .filter((x) => !arr2.includes(x))
+      .concat(arr2.filter((x) => !arr1.includes(x)));
+
+    return difference;
+  }
+
+  getIntersectionBetweeenArrays(arr1: Array<any>, arr2: Array<any>) {
+    const intersection = arr1.filter((x) =>
+      arr2.some((y) => JSON.stringify(x) === JSON.stringify(y)),
+    );
+
+    return intersection;
+  }
+
+  getDifferenceBetweenArrays(arr1: Array<any>, arr2: Array<any>) {
+    const difference = arr1.filter(
+      (x) => !arr2.some((y) => JSON.stringify(x) === JSON.stringify(y)),
+    );
+
+    return difference;
+  }
   mapData(data: Array<any>): Array<any> {
     return data.map((element: any) => ({
       latitud: Number(element.lat),
