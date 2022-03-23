@@ -17,8 +17,8 @@ export class CronService {
 
   private readonly logger = new Logger(CronService.name);
 
-  //@Cron('10,30,50 * * * * *')
-  @Cron(CronExpression.EVERY_5_SECONDS)
+  //@Cron(CronExpression.EVERY_5_SECONDS)
+  @Cron('10,30,50 * * * * *')
   async handleCron() {
     const rawData = await this.connection.query(
       'select tracker.lat,tracker.lon,tracker.velocidad,tracker.direccion,tracker.time,unidades.placa FROM tracker,unidades where tracker.id_empresa=unidades.id_empresa AND tracker.id_tracker=unidades.gps_set AND tracker.id_empresa=16 AND tracker.u_time>(now() - interval 5 second)',
@@ -49,7 +49,7 @@ export class CronService {
       //this.logger.verbose(
       //  `example => ${JSON.stringify(parsedData.slice(0, 4), null, 2)}`,
       //);
-      //this.sendDataToMtc(parsedData);
+      await this.sendDataToMtc(parsedData);
       this.cacheManager.set('rawData', rawData, { ttl: 0 });
     }
     this.logger.verbose(`------------------------------------------------`);
@@ -100,7 +100,7 @@ export class CronService {
           })
           .pipe(map((resp) => resp.data)),
       );
-      this.logger.verbose(`sendDataToMTC => ${response.message}`);
+      this.logger.verbose(`sendDataToMTC         => ${response.message}`);
     } catch (error) {
       this.setNewTokenInCache();
     }
